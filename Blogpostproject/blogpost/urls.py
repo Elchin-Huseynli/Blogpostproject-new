@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
 
-from posts.views import homepage, post, about, search, postlist, allposts,user,postlistauthor
+from posts.views import homepage, post, about, search, postlist, allposts,user,postlistauthor,post_list
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -15,6 +15,7 @@ urlpatterns = [
     path('posts/', allposts, name = 'allposts'),
     path('user/', user, name = 'user'),
     path('author/<author_id>/', postlistauthor, name = 'postlistauthor'),
+    path('tag/<slug:tag_slug>/',post_list, name='post_tag'),
     
 ]
 

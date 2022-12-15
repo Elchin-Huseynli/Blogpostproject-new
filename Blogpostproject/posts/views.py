@@ -1,12 +1,17 @@
-from django.shortcuts import render
-from django.db.models import Q 
-from .models import Category, Post, Author
+from django.shortcuts import render,get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import Http404
+from django.db.models import Q
+from taggit.models import Tag
+from .forms import CommentForm
+from .models import Category, Post, Author, About
 
 def get_author(user):
     qs = Author.objects.filter(user=user)
     if qs.exists():
         return qs[0]
     return None
+
 
 def homepage (request):
     categories = Category.objects.all()[0:3]
@@ -19,17 +24,37 @@ def homepage (request):
     }
     return render(request, 'homepage.html',context)
 
+
+
 def post (request,slug):
-    post = Post.objects.get(slug = slug)
-    latest = Post.objects.order_by('-timestamp')[:3]
+    try:
+        post = Post.objects.get(slug=slug)
+        latest = Post.objects.order_by('-timestamp')
+    except ObjectDoesNotExist:
+        raise Http404    
+
+    comment_form = CommentForm(request.POST or None)
+    if comment_form.is_valid():
+        comment = comment_form.save(commit=False)
+        comment.post = post
+        comment.save()
+        comment_form = CommentForm()
     context = {
         'post': post,
         'latest': latest,
+        'form':comment_form,
     }
     return render(request, 'post.html', context)
 
+
+
 def about (request):
-    return render(request, 'about_page.html')
+    about = About.objects.get()
+    context = {
+        'about':about
+    }
+    return render(request, 'about_page.html',context)
+
 
 def search(request):
     queryset = Post.objects.all()
@@ -56,16 +81,23 @@ def postlist (request,slug):
     }
     return render(request, 'post_list.html', context)
 
+
 def allposts(request):
     posts = Post.objects.order_by('-timestamp')
 
     context = {
         'posts': posts,
     }
-    return render(request, 'all_posts.html', context)
+    return render(request, 'all_posts.html',context)
+
 
 def user (request):
-    return render(request, 'user.html')
+    about = About.objects.get()
+    context = {
+        'about':about
+    }
+    return render(request, 'user.html',context)
+
 
 def postlistauthor (request,author_id):
     posts = Post.objects.filter(author_id=author_id).order_by('-timestamp')
@@ -76,4 +108,16 @@ def postlistauthor (request,author_id):
         'author' : author,
 
     }
-    return render(request, 'postlist_author.html', context)        
+    return render(request, 'postlist_author.html', context)
+
+
+def post_list(request, tag_slug=None):
+    tag = None
+    if tag_slug:
+        tag = get_object_or_404(Tag, slug=tag_slug)
+        posts = Post.objects.filter(tags__in=[tag])
+    context = {
+        'posts': posts,
+        'tag': tag
+    }
+    return render(request, 'post_list.html',context)            
